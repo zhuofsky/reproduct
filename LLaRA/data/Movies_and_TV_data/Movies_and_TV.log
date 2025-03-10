@@ -1,0 +1,15 @@
+2025-03-07 03:57:45,634 - [line:156]: 'total review', 8765568, 'review w/o rating', 0, 0 / all_num
+2025-03-07 03:57:45,634 - [line:443]: [('A3478QRKQDOPQ2', '0001527665', 1362960000, 5.0), ('A2VHSG6TZHU1OB', '0001527665', 1361145600, 5.0), ('A23EJWOW1TLENE', '0001527665', 1358380800, 5.0), ('A1KM9FNEJ8Q171', '0001527665', 1357776000, 5.0), ('A38LY2SSHVHRYB', '0001527665', 1356480000, 4.0)]
+2025-03-07 03:58:05,853 - [line:19]: Movies_and_TV Raw data has been processed! Lower than 3.0 are deleted!
+2025-03-07 03:58:49,637 - [line:19]: User 5-core complete! Item 5-core complete!
+2025-03-07 03:58:59,543 - [line:19]: user_nums: 222656, item_nums: 49155
+2025-03-07 03:58:59,543 - [line:19]: start getting meta infos
+2025-03-07 03:59:04,100 - [line:19]: diff num: 7637
+2025-03-07 03:59:21,486 - [line:19]: Total User: 171466, Avg User: 10.8603, Min Len: 5, Max Len: 1449
+Total Item: 40186, Avg Item: 46.3389, Min Inter: 5, Max Inter: 4547
+Iteraction Num: 1862176, Sparsity: 99.97%
+2025-03-07 03:59:21,486 - [line:19]: defaultdict(<class 'int'>, {5.0: 1417145, 4.0: 445031}), 1.0
+2025-03-07 03:59:21,486 - [line:19]: 0.7610156075472995
+2025-03-07 03:59:21,486 - [line:19]: Begin extracting meta infos...
+2025-03-07 03:59:21,486 - [line:19]: before delete, attribute num:2
+2025-03-07 03:59:22,933 - [line:19]: before delete, attribute num:17953

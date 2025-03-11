@@ -27,7 +27,7 @@ class GRU(nn.Module):
             num_embeddings=item_num + 1,
             embedding_dim=self.hidden_size,
         )
-        nn.init.normal_(self.item_embeddings.weight, 0, 0.01)
+        # nn.init.normal_(self.item_embeddings.weight, 0, 0.01)
         self.gru = nn.GRU(
             input_size=self.hidden_size,
             hidden_size=self.hidden_size,
@@ -156,7 +156,7 @@ class SASRec(nn.Module):
             num_embeddings=item_num + 1,
             embedding_dim=hidden_size,
         )
-        nn.init.normal_(self.item_embeddings.weight, 0, 1)
+        # nn.init.normal_(self.item_embeddings.weight, 0, 1)
         self.positional_embeddings = nn.Embedding(
             num_embeddings=state_size,
             embedding_dim=hidden_size
@@ -168,6 +168,15 @@ class SASRec(nn.Module):
         self.mh_attn = MultiHeadAttention(hidden_size, hidden_size, num_heads, dropout)
         self.mh_attn_re = MultiHeadAttention_my(hidden_size, num_heads, dropout,device)
         self.feed_forward = PositionwiseFeedForward(hidden_size, hidden_size, dropout)
+
+        # # block 2
+        # self.ln_1_block_2 = nn.LayerNorm(hidden_size, eps=1e-8)
+        # self.ln_2_block_2 = nn.LayerNorm(hidden_size, eps=1e-8)
+        # self.ln_3_block_2 = nn.LayerNorm(hidden_size, eps=1e-8)
+        # self.mh_attn_block_2 = MultiHeadAttention(hidden_size, hidden_size, num_heads, dropout)
+        # self.mh_attn_re_block_2 = MultiHeadAttention_my(hidden_size, num_heads, dropout,device)
+        # self.feed_forward_block_2 = PositionwiseFeedForward(hidden_size, hidden_size, dropout)
+
         self.s_fc = nn.Linear(hidden_size, item_num)
 
     def s_forward(self, states, len_states):
@@ -242,11 +251,15 @@ class SASRec(nn.Module):
     #     supervised_output = self.s_fc(state_hidden).squeeze()
     #     return supervised_output
 
-    def foward(self, states, len_states, pos_seqs, neg_seqs):
+    def forward(self, states, len_states, pos_seqs, neg_seqs):
 
         # 最初的SASRec，用的是对比学习的方法
         inputs_emb = self.item_embeddings(states)
-        inputs_emb += self.positional_embeddings(torch.arange(self.state_size).to(self.device))
+        inputs_emb *= self.item_embeddings.embedding_dim ** 0.5 # 缩放
+
+        pos_emb = self.positional_embeddings(torch.arange(self.state_size).to(self.device).repeat(states.size(0),1))
+
+        inputs_emb += pos_emb
         seq = self.emb_dropout(inputs_emb)
         mask = torch.ne(states, 0).float().unsqueeze(-1).to(self.device)
         seq *= mask
@@ -259,8 +272,18 @@ class SASRec(nn.Module):
         ff_out *= mask
         log_feats = self.ln_3(ff_out)
 
-        pos_embs = self.item_emb(pos_seqs)
-        neg_embs = self.item_emb(neg_seqs)
+        # # 2 block
+        # seq_normalized = self.ln_1_block_2(seq)  # pre_normal
+        # mh_attn_out, _ = self.mh_attn_re_block_2(seq_normalized, seq, attention_mask=mask.squeeze(-1))
+        # mh_attn_out = mh_attn_out + seq
+        # ff_out = self.feed_forward_block_2(self.ln_2_block_2(mh_attn_out))
+        # ff_out *= mask
+        # log_feats = self.ln_3_block_2(ff_out)
+
+        pos_embs = self.item_embeddings(pos_seqs)
+        if (pos_seqs > self.item_num).sum() > 0:
+            print('超出索引')
+        neg_embs = self.item_embeddings(neg_seqs)
 
         pos_logits = (log_feats * pos_embs).sum(dim=-1)
         neg_logits = (log_feats * neg_embs).sum(dim=-1)
@@ -269,6 +292,8 @@ class SASRec(nn.Module):
 
     def predict(self, states, item_indices):
         inputs_emb = self.item_embeddings(states)
+        inputs_emb *= self.item_embeddings.embedding_dim ** 0.5  # 缩放
+
         inputs_emb += self.positional_embeddings(torch.arange(self.state_size).to(self.device))
         seq = self.emb_dropout(inputs_emb)
         mask = torch.ne(states, 0).float().unsqueeze(-1).to(self.device)
@@ -281,10 +306,16 @@ class SASRec(nn.Module):
         ff_out = self.feed_forward(self.ln_2(mh_attn_out))
         ff_out *= mask
         log_feats = self.ln_3(ff_out)
+        # 2 block
+        seq_normalized = self.ln_1_block_2(seq)  # pre_normal
+        mh_attn_out, _ = self.mh_attn_re_block_2(seq_normalized, seq, attention_mask=mask.squeeze(-1))
+        mh_attn_out = mh_attn_out + seq
+        ff_out = self.feed_forward_block_2(self.ln_2_block_2(mh_attn_out))
+        ff_out *= mask
+        log_feats = self.ln_3_block_2(ff_out)
+
         final_feat = log_feats[:, -1, :]
-
-
-        item_embs = self.item_emb(item_indices)
+        item_embs = self.item_embeddings(item_indices)
         # (U, I, C) #
         logits = item_embs.matmul(final_feat.unsqueeze(-1)).squeeze(-1)
         return logits
